@@ -14,12 +14,76 @@ datasource db {
 }
 
 model User {
-  id                  String   @id @default(cuid())
-  username            String   @unique
+  id                  String            @id @default(cuid())
+  username            String            @unique
   name                String?
   password            String?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
   authentication      String
   image               String?
+
+  remotes             Remote[]
+  images              Image[]
+  requests            Request[]
+}
+
+model Remote {
+  id                  String            @id @default(cuid())
+  name                String
+  username            String
+  host                String
+  port                Int
+  privateKey          String
+  createdAt           DateTime          @default(now())
+
+  images              Image[]
+  requests            Request[]
+
+  userId              String
+  user                User              @relation(fields: [userId], references: [id])
+}
+
+model Image {
+  id                  String            @id @default(cuid())
+  name                String
+  path                String
+  createdAt           DateTime          @default(now())
+
+  requests            Request[]
+
+  remoteId            String
+  userId              String
+
+  remote              Remote            @relation(fields: [remoteId], references: [id])
+  user                User              @relation(fields: [userId], references: [id])
+}
+
+model Request {
+  id                  String            @id @default(cuid())
+  type                RequestType
+  body                String
+  createdAt           DateTime          @default(now())
+  status              RequestStatus     @default(PENDING)
+  result              String?
+
+  remoteId            String?
+  userId              String
+  imageId             String?
+
+  remote              Remote?           @relation(fields: [remoteId], references: [id])
+  user                User              @relation(fields: [userId], references: [id])
+  image               Image?            @relation(fields: [imageId], references: [id])
+}
+
+enum RequestType {
+  ADD
+  CAPTURE
+  ANALYSE
+}
+
+enum RequestStatus {
+  PENDING
+  SUCCESS
+  FAILED
 }
