@@ -10,9 +10,9 @@ export default function ProfileBtn() {
         return null;
     }
 
-    return <div class="flex items-center gap-4">
-        {session?.data?.user.image && <img class="w-10 h-10 rounded-full" src={session?.data?.user?.image} alt="" />}
-        <div class="font-medium">
+    return <div className="flex items-center gap-4">
+        {session?.data?.user.image && <img className="w-10 h-10 rounded-full" src={session?.data?.user?.image} alt="" />}
+        <div className="font-medium">
             <div>{session.data?.user?.name}</div>
         </div>
     </div>

@@ -1,7 +1,10 @@
-import NextAuth, { TokenSet } from "next-auth"
+import NextAuth, { SessionStrategy, TokenSet } from "next-auth"
 import GoogleProvider from "next-auth/providers/google"
 import { prisma } from "@/app/db/dbConnect"
 import { Session } from "next-auth";
+import { JWT } from "next-auth/jwt";
+import { PrismaAdapter } from "@next-auth/prisma-adapter";
+import { redirect } from "next/dist/server/api-utils";
 
 // Define the extended user type
 type ExtendedSessionUser = {
@@ -17,7 +20,17 @@ type ExtendedSession = Session & {
   user: ExtendedSessionUser;
 };
 
-const handler = NextAuth({
+export interface session extends Session {
+  user: {
+    id: string;
+    jwtToken: string;
+    role: string;
+    email: string;
+    name: string;
+  };
+}
+
+export const authOptions = {
   providers: [
       GoogleProvider({
         clientId : process.env.GOOGLE_CLIENT_ID as string,
@@ -25,56 +38,36 @@ const handler = NextAuth({
         
       }),
   ],
-  secret: process.env.JWT_SECRET,
+  adapter: PrismaAdapter(prisma),
+  secret: process.env.NEXTAUTH_SECRET,
+  jwt: {
+    secret: process.env.NEXTAUTH_SECRET,
+  },
+  session : {
+    strategy: "jwt" as SessionStrategy,
+  },
   callbacks: {
-    jwt: async ({token, user, account, profile}) => {
-      console.log("JWT Callback");
+    session: async ({ session, token }:any) => {
 
-      const existingUser = await prisma.user.findFirst({
+      const user = await prisma.user.findUnique({
         where: {
-          username: token.email as string
-        }
+          email: session.user.email as string,
+        },
       });
 
-      if(existingUser){
-        console.log("User Exists");
-        console.log(existingUser);
-        token.id = existingUser.id;
+      if(!user){
+        throw new Error("User not found");
       }
-
-      if (!existingUser) {
-        const newuser = await prisma.user.create({
-          data: {
-            username: token.email as string,
-            name: token.name as string,
-            image: token.picture as string,
-            authentication : "google"
-          }
-        });
-        console.log("New User Created");
-        console.log(newuser);
-        token.id = newuser.id;
-      }
-      
-      token.image = token.picture;
-      token.username = token.email;
-      return token;
+      session.user.id = user?.id as string;   
+   
+      return session;
     },
-    session: async ({session, token}:{
-      session: Session;
-      token: TokenSet;
-    }):Promise<ExtendedSession> => {
-
-      if (session.user) {
-        session.user = {
-          ...session.user,
-          id: token.id as string,
-          username: (token as any).username || token.email || null,
-        } as ExtendedSessionUser;
-      }  
-      return session as ExtendedSession;
+    redirect : async ({url, baseUrl}:any) =>{
+      return url.startsWith(baseUrl) ? url : `${baseUrl}/dashboard`;
     }
   }
-});
+}
+
+const handler = NextAuth(authOptions);
 
 export { handler as GET, handler as POST };
