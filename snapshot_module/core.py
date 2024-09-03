@@ -2,13 +2,6 @@ from paramiko import SSHClient, AutoAddPolicy, AuthenticationException, SSHExcep
 import os
 from aws import generate_presigned_url_upload
 
-bucket_name = 'memory-insight'
-object_key = 'remoteId/snapId.lime.compressed'
-region_name = 'ap-southeast-1'
-
-presigned_url = generate_presigned_url_upload(bucket_name=bucket_name, object_key=object_key, region_name=region_name)
-print(presigned_url)
-
 class Remote:
     def __init__(self, hostname, username, password, pkey, keyfile) -> None:
         self.hostname = hostname
@@ -24,7 +17,7 @@ class Remote:
         while True:
             resp = shell.recv(1024).decode('utf-8')
             buff += resp
-            if buff.endswith('$ ') or buff.endswith('# '):  # Adjust this to the prompt of your remote shell
+            if buff.endswith('$ ') or buff.endswith('# '):
                 break
         return buff
     
@@ -155,6 +148,9 @@ class Remote:
             
             print("Snapshot captured successfully")
             shell.close()
+
+            # Upload the snapshot to S3
+            presigned_url = generate_presigned_url_upload(f'')
 
             parallel_commands = [
                 "sudo chmod 644 avml/output.lime.compressed",
